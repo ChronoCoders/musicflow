@@ -239,7 +239,7 @@ const Dashboard: React.FC = () => {
       
     } catch (error) {
       console.error('Withdraw error:', error)
-      alert(`Withdraw failed. Manual option: Go to Polygonscan, connect wallet, and call withdraw() function directly on contract 0xE8F3d2b0711Dd97EDD17795450a5961c1676E581`)
+      alert("Withdraw failed. Manual option: Go to Polygonscan, connect wallet, and call withdraw() function directly on contract 0xE8F3d2b0711Dd97EDD17795450a5961c1676E581")
     }
   }
 
