@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Artist {
+  id            Int      @id @default(autoincrement())
+  walletAddress String   @unique
+  name          String?
+  email         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  tracks        Track[]
+  
+  @@map("artists")
+}
+
+model Track {
+  id            Int      @id @default(autoincrement())
+  trackId       String   @unique
+  title         String
+  artistId      Int
+  ipfsHash      String?
+  totalEarnings Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  artist        Artist   @relation(fields: [artistId], references: [id])
+  revenues      Revenue[]
+  
+  @@map("tracks")
+}
+
+model Revenue {
+  id        Int      @id @default(autoincrement())
+  trackId   Int
+  amount    Float
+  platform  String
+  txHash    String?
+  createdAt DateTime @default(now())
+  
+  track     Track    @relation(fields: [trackId], references: [id])
+  
+  @@map("revenues")
+}

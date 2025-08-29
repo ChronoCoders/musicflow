@@ -1,13 +1,46 @@
-export const ROYALTY_DISTRIBUTOR_ADDRESS = "0x00Ff9ddD446C8b00b6E645E2b8e23d01641952AD";
+export const ROYALTY_DISTRIBUTOR_ADDRESS = "0xE8F3d2b0711Dd97EDD17795450a5961c1676E581";
 
 export const ROYALTY_DISTRIBUTOR_ABI = [
-  "function registerTrack(bytes32 trackId) external",
-  "function addRevenue(bytes32 trackId) external payable",
-  "function withdraw() external",
-  "function getTrackEarnings(bytes32 trackId) external view returns (uint256)",
-  "function tracks(bytes32) external view returns (address owner, uint256 totalEarnings, bool exists)",
-  "function pendingWithdrawals(address) external view returns (uint256)",
-  "event TrackRegistered(bytes32 indexed trackId, address indexed owner)",
-  "event RevenueAdded(bytes32 indexed trackId, uint256 amount)",
-  "event Withdrawal(address indexed user, uint256 amount)"
-];
+  {
+    "inputs": [
+      {"name": "trackId", "type": "bytes32"},
+      {"name": "rightHolders", "type": "address[]"},
+      {"name": "percentages", "type": "uint256[]"}
+    ],
+    "name": "registerTrack",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"name": "trackId", "type": "bytes32"}],
+    "name": "addRevenue",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "withdraw",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"name": "trackId", "type": "bytes32"}],
+    "name": "getTrackRightHolders",
+    "outputs": [
+      {"name": "holders", "type": "address[]"},
+      {"name": "percentages", "type": "uint256[]"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"name": "", "type": "address"}],
+    "name": "pendingWithdrawals",
+    "outputs": [{"name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  }
+] as const;
