@@ -1,10 +1,10 @@
-import { WagmiProvider } from 'wagmi'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { config } from './config/wagmi'
-import Dashboard from './components/Dashboard'
-import './App.css'
+import { WagmiProvider } from "wagmi";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { config } from "./config/wagmi";
+import Dashboard from "./components/Dashboard";
+import "./App.css";
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient();
 
 function App() {
   return (
@@ -16,7 +16,7 @@ function App() {
         </div>
       </QueryClientProvider>
     </WagmiProvider>
-  )
+  );
 }
 
-export default App
+export default App;
