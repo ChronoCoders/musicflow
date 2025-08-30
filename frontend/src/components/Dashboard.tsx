@@ -23,28 +23,32 @@ interface RightHolder {
   percentage: number
 }
 
-// Legacy gas pricing for Amoy testnet compatibility
-const getLegacyGasConfig = (functionName: string) => {
+// Alchemy için optimize edilmiş gas stratejisi
+const getAlchemyOptimizedGas = (functionName: string) => {
   switch (functionName) {
     case 'registerTrack':
       return {
-        gas: 600000n,
-        gasPrice: parseGwei('30'), // Legacy pricing
+        gas: 400000n, // Alchemy daha iyi estimation yapar
+        maxFeePerGas: parseGwei('35'),
+        maxPriorityFeePerGas: parseGwei('3'),
       }
     case 'addRevenue':
       return {
-        gas: 500000n,
-        gasPrice: parseGwei('30'),
+        gas: 300000n,
+        maxFeePerGas: parseGwei('30'),
+        maxPriorityFeePerGas: parseGwei('2'),
       }
     case 'withdraw':
       return {
-        gas: 150000n,
-        gasPrice: parseGwei('25'), // Lower for simple operations
+        gas: 80000n, // Simple transfer için düşük
+        maxFeePerGas: parseGwei('25'),
+        maxPriorityFeePerGas: parseGwei('1'),
       }
     default:
       return {
         gas: 200000n,
-        gasPrice: parseGwei('30'),
+        maxFeePerGas: parseGwei('30'),
+        maxPriorityFeePerGas: parseGwei('2'),
       }
   }
 }
@@ -93,15 +97,36 @@ const Dashboard: React.FC = () => {
   }, [isConnected, address])
 
   const loadTracks = async () => {
-    if (!address) return
+    console.log('=== loadTracks START ===')
+    console.log('Address check:', address)
     
+    if (!address) {
+      console.log('✗ No address, returning early')
+      return
+    }
+    
+    console.log('✓ Address exists, proceeding...')
     setLoading(true)
+    console.log('=== API CALL DEBUG ===')
+    console.log('Address:', address)
+    console.log('API URL would be:', `http://localhost:3001/api/tracks/${address}`)
+    
     try {
+      console.log('About to call trackAPI.getTracks...')
       const fetchedTracks = await trackAPI.getTracks(address)
+      console.log('✓ API SUCCESS - Tracks received:', fetchedTracks.length)
+      console.log('First track:', fetchedTracks[0])
       setTracks(fetchedTracks)
-    } catch (error) {
+    } catch (error: any) {
+      console.log('✗ API ERROR DETAILS:')
+      console.log('Error object:', error)
+      console.log('Error message:', error.message)
+      console.log('Error code:', error.code)
+      console.log('Response status:', error.response?.status)
+      console.log('Response data:', error.response?.data)
       console.error('Failed to load tracks:', error)
     } finally {
+      console.log('=== loadTracks END ===')
       setLoading(false)
     }
   }
@@ -149,7 +174,7 @@ const Dashboard: React.FC = () => {
       console.log('Holders:', holders)
       console.log('Percentages:', percentages)
       
-      const gasConfig = getLegacyGasConfig('registerTrack')
+      const gasConfig = getAlchemyOptimizedGas('registerTrack')
       
       writeContract({
         address: ROYALTY_DISTRIBUTOR_ADDRESS,
@@ -170,15 +195,15 @@ const Dashboard: React.FC = () => {
       setTrackName('')
       setRightHolders([{ address: address, percentage: 100 }])
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Register error:', error)
       
-      if (error.message.includes('JSON-RPC')) {
-        alert('RPC Error: Try again in a few seconds or switch RPC endpoint')
-      } else if (error.message.includes('gas')) {
-        alert('Gas estimation failed: Try with different gas settings')
+      if (error.message.includes('execution reverted')) {
+        alert('Transaction failed: ' + (error.reason || 'Unknown error'))
+      } else if (error.message.includes('user rejected')) {
+        alert('Transaction cancelled by user')
       } else {
-        alert('Registration failed. Please try with a unique track name.')
+        alert('Registration failed. Please try again.')
       }
     }
   }
@@ -191,7 +216,7 @@ const Dashboard: React.FC = () => {
     
     try {
       const trackId = keccak256(toBytes(selectedTrackId))
-      const gasConfig = getLegacyGasConfig('addRevenue')
+      const gasConfig = getAlchemyOptimizedGas('addRevenue')
       
       writeContract({
         address: ROYALTY_DISTRIBUTOR_ADDRESS,
@@ -212,11 +237,11 @@ const Dashboard: React.FC = () => {
       setSelectedTrackId('')
       setRevenueAmount('')
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Add revenue error:', error)
       
-      if (error.message.includes('JSON-RPC')) {
-        alert('RPC Error: Try again in a few seconds')
+      if (error.message.includes('execution reverted')) {
+        alert('Transaction failed: ' + (error.reason || 'Unknown error'))
       } else {
         alert('Failed to add revenue. Please try again.')
       }
@@ -225,21 +250,25 @@ const Dashboard: React.FC = () => {
 
   const handleWithdraw = async () => {
     try {
-      console.log('Attempting withdraw with manual gas...')
+      console.log('Attempting withdraw with Alchemy optimized gas...')
       
-      // Force the exact gas values that worked before
+      const gasConfig = getAlchemyOptimizedGas('withdraw')
+      
       writeContract({
         address: ROYALTY_DISTRIBUTOR_ADDRESS,
         abi: ROYALTY_DISTRIBUTOR_ABI,
         functionName: 'withdraw',
-        gas: 80000n,  // Even lower gas
-        gasPrice: parseGwei('15'), // Lower gas price
-        account: address,
+        ...gasConfig,
       })
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Withdraw error:', error)
-      alert(`Withdraw failed. Manual option: Go to Polygonscan, connect wallet, and call withdraw() function directly on contract 0xE8F3d2b0711Dd97EDD17795450a5961c1676E581`)
+      // Alchemy daha detaylı error messages verir
+      if (error.message.includes('execution reverted')) {
+        alert('Transaction failed: ' + (error.reason || 'Unknown error'))
+      } else {
+        alert('Network error. Please try again.')
+      }
     }
   }
 
