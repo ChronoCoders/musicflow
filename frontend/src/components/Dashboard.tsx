@@ -1,317 +1,335 @@
-import React, { useState, useEffect } from 'react'
-import { useAccount, useConnect, useDisconnect, useReadContract, useWriteContract } from 'wagmi'
-import { parseEther, keccak256, toBytes, formatEther, parseGwei } from 'viem'
-import { ROYALTY_DISTRIBUTOR_ADDRESS, ROYALTY_DISTRIBUTOR_ABI } from '../contracts/RoyaltyDistributor'
-import { trackAPI } from '../services/api'
-import AnalyticsDashboard from './AnalyticsDashboard'
+import React, { useState, useEffect } from "react";
+import {
+  useAccount,
+  useConnect,
+  useDisconnect,
+  useReadContract,
+  useWriteContract,
+} from "wagmi";
+import { parseEther, keccak256, toBytes, formatEther, parseGwei } from "viem";
+import {
+  ROYALTY_DISTRIBUTOR_ADDRESS,
+  ROYALTY_DISTRIBUTOR_ABI,
+} from "../contracts/RoyaltyDistributor";
+import { trackAPI } from "../services/api";
+import AnalyticsDashboard from "./AnalyticsDashboard";
 
 interface Track {
-  id: number
-  trackId: string
-  title: string
-  totalEarnings: number
-  createdAt: string
+  id: number;
+  trackId: string;
+  title: string;
+  totalEarnings: number;
+  createdAt: string;
   revenues: Array<{
-    amount: number
-    platform: string
-    createdAt: string
-  }>
+    amount: number;
+    platform: string;
+    createdAt: string;
+  }>;
 }
 
 interface RightHolder {
-  address: string
-  percentage: number
+  address: string;
+  percentage: number;
 }
 
 // Alchemy için optimize edilmiş gas stratejisi
 const getAlchemyOptimizedGas = (functionName: string) => {
   switch (functionName) {
-    case 'registerTrack':
+    case "registerTrack":
       return {
         gas: 400000n, // Alchemy daha iyi estimation yapar
-        maxFeePerGas: parseGwei('35'),
-        maxPriorityFeePerGas: parseGwei('3'),
-      }
-    case 'addRevenue':
+        maxFeePerGas: parseGwei("35"),
+        maxPriorityFeePerGas: parseGwei("3"),
+      };
+    case "addRevenue":
       return {
         gas: 300000n,
-        maxFeePerGas: parseGwei('30'),
-        maxPriorityFeePerGas: parseGwei('2'),
-      }
-    case 'withdraw':
+        maxFeePerGas: parseGwei("30"),
+        maxPriorityFeePerGas: parseGwei("2"),
+      };
+    case "withdraw":
       return {
         gas: 80000n, // Simple transfer için düşük
-        maxFeePerGas: parseGwei('25'),
-        maxPriorityFeePerGas: parseGwei('1'),
-      }
+        maxFeePerGas: parseGwei("25"),
+        maxPriorityFeePerGas: parseGwei("1"),
+      };
     default:
       return {
         gas: 200000n,
-        maxFeePerGas: parseGwei('30'),
-        maxPriorityFeePerGas: parseGwei('2'),
-      }
+        maxFeePerGas: parseGwei("30"),
+        maxPriorityFeePerGas: parseGwei("2"),
+      };
   }
-}
+};
 
 const Dashboard: React.FC = () => {
-  const { address, isConnected } = useAccount()
-  const { connect, connectors } = useConnect()
-  const { disconnect } = useDisconnect()
-  const { writeContract, isPending, error } = useWriteContract()
-  
-  const [trackName, setTrackName] = useState('')
-  const [revenueAmount, setRevenueAmount] = useState('')
-  const [selectedTrackId, setSelectedTrackId] = useState('')
-  const [tracks, setTracks] = useState<Track[]>([])
-  const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'analytics'>('overview')
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
+  const { writeContract, isPending, error } = useWriteContract();
+
+  const [trackName, setTrackName] = useState("");
+  const [revenueAmount, setRevenueAmount] = useState("");
+  const [selectedTrackId, setSelectedTrackId] = useState("");
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"overview" | "analytics">(
+    "overview",
+  );
   const [rightHolders, setRightHolders] = useState<RightHolder[]>([
-    { address: '', percentage: 100 }
-  ])
+    { address: "", percentage: 100 },
+  ]);
 
   const { data: pendingBalance } = useReadContract({
     address: ROYALTY_DISTRIBUTOR_ADDRESS,
     abi: ROYALTY_DISTRIBUTOR_ABI,
-    functionName: 'pendingWithdrawals',
+    functionName: "pendingWithdrawals",
     args: [address as `0x${string}`],
-  })
+  });
 
   useEffect(() => {
-    console.log('=== useEffect DEBUG ===')
-    console.log('isConnected:', isConnected)
-    console.log('address:', address)
-    console.log('trackAPI object:', trackAPI)
-    
+    console.log("=== useEffect DEBUG ===");
+    console.log("isConnected:", isConnected);
+    console.log("address:", address);
+    console.log("trackAPI object:", trackAPI);
+
     if (isConnected && address) {
-      console.log('✓ Calling loadTracks...')
-      console.log('loadTracks function:', loadTracks)
+      console.log("✓ Calling loadTracks...");
+      console.log("loadTracks function:", loadTracks);
       try {
-        loadTracks()
+        loadTracks();
       } catch (err) {
-        console.log('Error calling loadTracks:', err)
+        console.log("Error calling loadTracks:", err);
       }
-      setRightHolders([{ address: address, percentage: 100 }])
+      setRightHolders([{ address: address, percentage: 100 }]);
     } else {
-      console.log('✗ Not calling loadTracks - missing connection or address')
+      console.log("✗ Not calling loadTracks - missing connection or address");
     }
-  }, [isConnected, address])
+  }, [isConnected, address]);
 
   const loadTracks = async () => {
-    console.log('=== loadTracks START ===')
-    console.log('Address check:', address)
-    
+    console.log("=== loadTracks START ===");
+    console.log("Address check:", address);
+
     if (!address) {
-      console.log('✗ No address, returning early')
-      return
+      console.log("✗ No address, returning early");
+      return;
     }
-    
-    console.log('✓ Address exists, proceeding...')
-    setLoading(true)
-    console.log('=== API CALL DEBUG ===')
-    console.log('Address:', address)
-    console.log('API URL would be:', `http://localhost:3001/api/tracks/${address}`)
-    
+
+    console.log("✓ Address exists, proceeding...");
+    setLoading(true);
+    console.log("=== API CALL DEBUG ===");
+    console.log("Address:", address);
+    console.log(
+      "API URL would be:",
+      `http://localhost:3001/api/tracks/${address}`,
+    );
+
     try {
-      console.log('About to call trackAPI.getTracks...')
-      const fetchedTracks = await trackAPI.getTracks(address)
-      console.log('✓ API SUCCESS - Tracks received:', fetchedTracks.length)
-      console.log('First track:', fetchedTracks[0])
-      setTracks(fetchedTracks)
+      console.log("About to call trackAPI.getTracks...");
+      const fetchedTracks = await trackAPI.getTracks(address);
+      console.log("✓ API SUCCESS - Tracks received:", fetchedTracks.length);
+      console.log("First track:", fetchedTracks[0]);
+      setTracks(fetchedTracks);
     } catch (error: any) {
-      console.log('✗ API ERROR DETAILS:')
-      console.log('Error object:', error)
-      console.log('Error message:', error.message)
-      console.log('Error code:', error.code)
-      console.log('Response status:', error.response?.status)
-      console.log('Response data:', error.response?.data)
-      console.error('Failed to load tracks:', error)
+      console.log("✗ API ERROR DETAILS:");
+      console.log("Error object:", error);
+      console.log("Error message:", error.message);
+      console.log("Error code:", error.code);
+      console.log("Response status:", error.response?.status);
+      console.log("Response data:", error.response?.data);
+      console.error("Failed to load tracks:", error);
     } finally {
-      console.log('=== loadTracks END ===')
-      setLoading(false)
+      console.log("=== loadTracks END ===");
+      setLoading(false);
     }
-  }
+  };
 
   const addRightHolder = () => {
-    setRightHolders([...rightHolders, { address: '', percentage: 0 }])
-  }
+    setRightHolders([...rightHolders, { address: "", percentage: 0 }]);
+  };
 
-  const updateRightHolder = (index: number, field: 'address' | 'percentage', value: string | number) => {
-    const updated = [...rightHolders]
-    updated[index] = { ...updated[index], [field]: value }
-    setRightHolders(updated)
-  }
+  const updateRightHolder = (
+    index: number,
+    field: "address" | "percentage",
+    value: string | number,
+  ) => {
+    const updated = [...rightHolders];
+    updated[index] = { ...updated[index], [field]: value };
+    setRightHolders(updated);
+  };
 
   const removeRightHolder = (index: number) => {
     if (rightHolders.length > 1) {
-      setRightHolders(rightHolders.filter((_, i) => i !== index))
+      setRightHolders(rightHolders.filter((_, i) => i !== index));
     }
-  }
+  };
 
   const handleRegisterTrack = async () => {
     if (!trackName || !address) {
-      alert('Please enter track name')
-      return
-    }
-    
-    const totalPercentage = rightHolders.reduce((sum, holder) => sum + holder.percentage, 0)
-    if (totalPercentage !== 100) {
-      alert('Percentages must sum to 100%')
-      return
+      alert("Please enter track name");
+      return;
     }
 
-    const invalidHolders = rightHolders.filter(h => !h.address)
-    if (invalidHolders.length > 0) {
-      alert('All right holders must have valid addresses')
-      return
+    const totalPercentage = rightHolders.reduce(
+      (sum, holder) => sum + holder.percentage,
+      0,
+    );
+    if (totalPercentage !== 100) {
+      alert("Percentages must sum to 100%");
+      return;
     }
-    
+
+    const invalidHolders = rightHolders.filter((h) => !h.address);
+    if (invalidHolders.length > 0) {
+      alert("All right holders must have valid addresses");
+      return;
+    }
+
     try {
-      const trackId = keccak256(toBytes(trackName))
-      const holders = rightHolders.map(h => h.address as `0x${string}`)
-      const percentages = rightHolders.map(h => h.percentage * 100)
-      
-      console.log('Track ID:', trackId)
-      console.log('Holders:', holders)
-      console.log('Percentages:', percentages)
-      
-      const gasConfig = getAlchemyOptimizedGas('registerTrack')
-      
+      const trackId = keccak256(toBytes(trackName));
+      const holders = rightHolders.map((h) => h.address as `0x${string}`);
+      const percentages = rightHolders.map((h) => h.percentage * 100);
+
+      console.log("Track ID:", trackId);
+      console.log("Holders:", holders);
+      console.log("Percentages:", percentages);
+
+      const gasConfig = getAlchemyOptimizedGas("registerTrack");
+
       writeContract({
         address: ROYALTY_DISTRIBUTOR_ADDRESS,
         abi: ROYALTY_DISTRIBUTOR_ABI,
-        functionName: 'registerTrack',
+        functionName: "registerTrack",
         args: [trackId, holders, percentages],
         ...gasConfig,
-      })
-      
+      });
+
       // Save to database after blockchain success
       await trackAPI.registerTrack({
         trackId,
         title: trackName,
         walletAddress: address,
-      })
-      
-      await loadTracks()
-      setTrackName('')
-      setRightHolders([{ address: address, percentage: 100 }])
-      
+      });
+
+      await loadTracks();
+      setTrackName("");
+      setRightHolders([{ address: address, percentage: 100 }]);
     } catch (error: any) {
-      console.error('Register error:', error)
-      
-      if (error.message.includes('execution reverted')) {
-        alert('Transaction failed: ' + (error.reason || 'Unknown error'))
-      } else if (error.message.includes('user rejected')) {
-        alert('Transaction cancelled by user')
+      console.error("Register error:", error);
+
+      if (error.message.includes("execution reverted")) {
+        alert("Transaction failed: " + (error.reason || "Unknown error"));
+      } else if (error.message.includes("user rejected")) {
+        alert("Transaction cancelled by user");
       } else {
-        alert('Registration failed. Please try again.')
+        alert("Registration failed. Please try again.");
       }
     }
-  }
+  };
 
   const handleAddRevenue = async () => {
     if (!selectedTrackId || !revenueAmount || !address) {
-      alert('Please fill all fields')
-      return
+      alert("Please fill all fields");
+      return;
     }
-    
+
     try {
-      const trackId = keccak256(toBytes(selectedTrackId))
-      const gasConfig = getAlchemyOptimizedGas('addRevenue')
-      
+      const trackId = keccak256(toBytes(selectedTrackId));
+      const gasConfig = getAlchemyOptimizedGas("addRevenue");
+
       writeContract({
         address: ROYALTY_DISTRIBUTOR_ADDRESS,
         abi: ROYALTY_DISTRIBUTOR_ABI,
-        functionName: 'addRevenue',
+        functionName: "addRevenue",
         args: [trackId],
         value: parseEther(revenueAmount),
         ...gasConfig,
-      })
-      
+      });
+
       await trackAPI.addRevenue({
         trackId,
         amount: revenueAmount,
-        platform: 'manual'
-      })
-      
-      await loadTracks()
-      setSelectedTrackId('')
-      setRevenueAmount('')
-      
+        platform: "manual",
+      });
+
+      await loadTracks();
+      setSelectedTrackId("");
+      setRevenueAmount("");
     } catch (error: any) {
-      console.error('Add revenue error:', error)
-      
-      if (error.message.includes('execution reverted')) {
-        alert('Transaction failed: ' + (error.reason || 'Unknown error'))
+      console.error("Add revenue error:", error);
+
+      if (error.message.includes("execution reverted")) {
+        alert("Transaction failed: " + (error.reason || "Unknown error"));
       } else {
-        alert('Failed to add revenue. Please try again.')
+        alert("Failed to add revenue. Please try again.");
       }
     }
-  }
+  };
 
   const handleWithdraw = async () => {
     try {
-      console.log('Attempting withdraw with Alchemy optimized gas...')
-      
-      const gasConfig = getAlchemyOptimizedGas('withdraw')
-      
+      console.log("Attempting withdraw with Alchemy optimized gas...");
+
+      const gasConfig = getAlchemyOptimizedGas("withdraw");
+
       writeContract({
         address: ROYALTY_DISTRIBUTOR_ADDRESS,
         abi: ROYALTY_DISTRIBUTOR_ABI,
-        functionName: 'withdraw',
+        functionName: "withdraw",
         ...gasConfig,
-      })
-      
+      });
     } catch (error: any) {
-      console.error('Withdraw error:', error)
+      console.error("Withdraw error:", error);
       // Alchemy daha detaylı error messages verir
-      if (error.message.includes('execution reverted')) {
-        alert('Transaction failed: ' + (error.reason || 'Unknown error'))
+      if (error.message.includes("execution reverted")) {
+        alert("Transaction failed: " + (error.reason || "Unknown error"));
       } else {
-        alert('Network error. Please try again.')
+        alert("Network error. Please try again.");
       }
     }
-  }
+  };
 
   if (!isConnected) {
     return (
-      <div style={{padding: '20px'}}>
+      <div style={{ padding: "20px" }}>
         <h2>Connect Wallet</h2>
         {connectors.map((connector) => (
           <button
             key={connector.uid}
             onClick={() => connect({ connector })}
-            style={{margin: '5px', padding: '10px'}}
+            style={{ margin: "5px", padding: "10px" }}
           >
             Connect {connector.name}
           </button>
         ))}
       </div>
-    )
+    );
   }
 
   return (
-    <div style={{padding: '20px'}}>
+    <div style={{ padding: "20px" }}>
       {/* Tab Navigation */}
-      <div style={{marginBottom: '20px', borderBottom: '1px solid #ccc'}}>
+      <div style={{ marginBottom: "20px", borderBottom: "1px solid #ccc" }}>
         <button
-          onClick={() => setActiveTab('overview')}
+          onClick={() => setActiveTab("overview")}
           style={{
-            padding: '10px 20px',
-            backgroundColor: activeTab === 'overview' ? '#2196F3' : '#f5f5f5',
-            color: activeTab === 'overview' ? 'white' : 'black',
-            border: 'none',
-            marginRight: '10px'
+            padding: "10px 20px",
+            backgroundColor: activeTab === "overview" ? "#2196F3" : "#f5f5f5",
+            color: activeTab === "overview" ? "white" : "black",
+            border: "none",
+            marginRight: "10px",
           }}
         >
           Overview
         </button>
         <button
-          onClick={() => setActiveTab('analytics')}
+          onClick={() => setActiveTab("analytics")}
           style={{
-            padding: '10px 20px',
-            backgroundColor: activeTab === 'analytics' ? '#2196F3' : '#f5f5f5',
-            color: activeTab === 'analytics' ? 'white' : 'black',
-            border: 'none'
+            padding: "10px 20px",
+            backgroundColor: activeTab === "analytics" ? "#2196F3" : "#f5f5f5",
+            color: activeTab === "analytics" ? "white" : "black",
+            border: "none",
           }}
         >
           Analytics
@@ -319,97 +337,175 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'overview' ? (
+      {activeTab === "overview" ? (
         <>
           {/* Wallet Info */}
-          <div style={{marginBottom: '20px', padding: '10px', border: '1px solid #ccc'}}>
-            <p><strong>Connected:</strong> {address}</p>
-            <p><strong>Pending Balance:</strong> {pendingBalance ? formatEther(pendingBalance) : '0'} MATIC</p>
-            {isPending && <p style={{color: 'orange'}}>Transaction pending...</p>}
-            {error && <p style={{color: 'red'}}>Error: {error.message}</p>}
-            <button onClick={() => disconnect()} style={{margin: '5px', padding: '8px'}}>
+          <div
+            style={{
+              marginBottom: "20px",
+              padding: "10px",
+              border: "1px solid #ccc",
+            }}
+          >
+            <p>
+              <strong>Connected:</strong> {address}
+            </p>
+            <p>
+              <strong>Pending Balance:</strong>{" "}
+              {pendingBalance ? formatEther(pendingBalance) : "0"} MATIC
+            </p>
+            {isPending && (
+              <p style={{ color: "orange" }}>Transaction pending...</p>
+            )}
+            {error && <p style={{ color: "red" }}>Error: {error.message}</p>}
+            <button
+              onClick={() => disconnect()}
+              style={{ margin: "5px", padding: "8px" }}
+            >
               Disconnect
             </button>
-            <button 
-              onClick={handleWithdraw} 
+            <button
+              onClick={handleWithdraw}
               disabled={isPending}
-              style={{margin: '5px', padding: '8px', backgroundColor: '#4CAF50', color: 'white'}}
+              style={{
+                margin: "5px",
+                padding: "8px",
+                backgroundColor: "#4CAF50",
+                color: "white",
+              }}
             >
-              {isPending ? 'Processing...' : 'Withdraw'}
+              {isPending ? "Processing..." : "Withdraw"}
             </button>
           </div>
 
           {/* Register Track with Multiple Owners */}
-          <div style={{marginBottom: '20px', padding: '10px', border: '1px solid #ccc'}}>
+          <div
+            style={{
+              marginBottom: "20px",
+              padding: "10px",
+              border: "1px solid #ccc",
+            }}
+          >
             <h3>Register Track</h3>
             <input
               type="text"
               value={trackName}
               onChange={(e) => setTrackName(e.target.value)}
               placeholder="Track Name (must be unique)"
-              style={{padding: '8px', marginBottom: '10px', width: '300px', display: 'block'}}
+              style={{
+                padding: "8px",
+                marginBottom: "10px",
+                width: "300px",
+                display: "block",
+              }}
             />
-            
+
             <h4>Right Holders</h4>
             {rightHolders.map((holder, index) => (
-              <div key={index} style={{marginBottom: '10px', padding: '5px', border: '1px solid #eee'}}>
+              <div
+                key={index}
+                style={{
+                  marginBottom: "10px",
+                  padding: "5px",
+                  border: "1px solid #eee",
+                }}
+              >
                 <input
                   type="text"
                   value={holder.address}
-                  onChange={(e) => updateRightHolder(index, 'address', e.target.value)}
+                  onChange={(e) =>
+                    updateRightHolder(index, "address", e.target.value)
+                  }
                   placeholder="Wallet Address"
-                  style={{padding: '5px', width: '300px', marginRight: '10px'}}
+                  style={{
+                    padding: "5px",
+                    width: "300px",
+                    marginRight: "10px",
+                  }}
                 />
                 <input
                   type="number"
                   value={holder.percentage}
-                  onChange={(e) => updateRightHolder(index, 'percentage', parseInt(e.target.value) || 0)}
+                  onChange={(e) =>
+                    updateRightHolder(
+                      index,
+                      "percentage",
+                      parseInt(e.target.value) || 0,
+                    )
+                  }
                   placeholder="Percentage"
                   min="0"
                   max="100"
-                  style={{padding: '5px', width: '80px', marginRight: '10px'}}
+                  style={{ padding: "5px", width: "80px", marginRight: "10px" }}
                 />
                 <span>%</span>
                 {rightHolders.length > 1 && (
-                  <button 
+                  <button
                     onClick={() => removeRightHolder(index)}
-                    style={{marginLeft: '10px', padding: '5px', backgroundColor: '#ff4444', color: 'white'}}
+                    style={{
+                      marginLeft: "10px",
+                      padding: "5px",
+                      backgroundColor: "#ff4444",
+                      color: "white",
+                    }}
                   >
                     Remove
                   </button>
                 )}
               </div>
             ))}
-            
-            <button 
+
+            <button
               onClick={addRightHolder}
-              style={{padding: '8px', backgroundColor: '#888', color: 'white', marginRight: '10px'}}
+              style={{
+                padding: "8px",
+                backgroundColor: "#888",
+                color: "white",
+                marginRight: "10px",
+              }}
             >
               Add Right Holder
             </button>
-            
-            <button 
-              onClick={handleRegisterTrack} 
+
+            <button
+              onClick={handleRegisterTrack}
               disabled={isPending}
-              style={{padding: '8px', backgroundColor: '#2196F3', color: 'white'}}
+              style={{
+                padding: "8px",
+                backgroundColor: "#2196F3",
+                color: "white",
+              }}
             >
-              {isPending ? 'Processing...' : 'Register Track'}
+              {isPending ? "Processing..." : "Register Track"}
             </button>
-            
-            <p><small>Total: {rightHolders.reduce((sum, h) => sum + h.percentage, 0)}% (must equal 100%)</small></p>
+
+            <p>
+              <small>
+                Total: {rightHolders.reduce((sum, h) => sum + h.percentage, 0)}%
+                (must equal 100%)
+              </small>
+            </p>
           </div>
 
           {/* Add Revenue */}
-          <div style={{marginBottom: '20px', padding: '10px', border: '1px solid #ccc'}}>
+          <div
+            style={{
+              marginBottom: "20px",
+              padding: "10px",
+              border: "1px solid #ccc",
+            }}
+          >
             <h3>Add Revenue</h3>
             <select
               value={selectedTrackId}
               onChange={(e) => setSelectedTrackId(e.target.value)}
-              style={{padding: '8px', marginRight: '10px', width: '200px'}}
+              style={{ padding: "8px", marginRight: "10px", width: "200px" }}
             >
               <option value="">Select Track</option>
-              {tracks.map(track => (
-                <option key={track.id} value={track.title}>{track.title}</option>
+              {tracks.map((track) => (
+                <option key={track.id} value={track.title}>
+                  {track.title}
+                </option>
               ))}
             </select>
             <input
@@ -418,29 +514,46 @@ const Dashboard: React.FC = () => {
               onChange={(e) => setRevenueAmount(e.target.value)}
               placeholder="Amount (MATIC)"
               step="0.01"
-              style={{padding: '8px', marginRight: '10px', width: '150px'}}
+              style={{ padding: "8px", marginRight: "10px", width: "150px" }}
             />
-            <button 
-              onClick={handleAddRevenue} 
+            <button
+              onClick={handleAddRevenue}
               disabled={isPending}
-              style={{padding: '8px', backgroundColor: '#FF9800', color: 'white'}}
+              style={{
+                padding: "8px",
+                backgroundColor: "#FF9800",
+                color: "white",
+              }}
             >
-              {isPending ? 'Processing...' : 'Add Revenue'}
+              {isPending ? "Processing..." : "Add Revenue"}
             </button>
           </div>
 
           {/* Tracks List */}
-          <div style={{padding: '10px', border: '1px solid #ccc'}}>
-            <h3>My Tracks {loading && '(Loading...)'}</h3>
+          <div style={{ padding: "10px", border: "1px solid #ccc" }}>
+            <h3>My Tracks {loading && "(Loading...)"}</h3>
             {tracks.length === 0 ? (
               <p>No tracks registered yet</p>
             ) : (
-              tracks.map(track => (
-                <div key={track.id} style={{padding: '10px', margin: '5px', border: '1px solid #eee'}}>
+              tracks.map((track) => (
+                <div
+                  key={track.id}
+                  style={{
+                    padding: "10px",
+                    margin: "5px",
+                    border: "1px solid #eee",
+                  }}
+                >
                   <h4>{track.title}</h4>
-                  <p><strong>Total Earnings:</strong> {track.totalEarnings} MATIC</p>
-                  <p><strong>Revenues:</strong> {track.revenues.length} payments</p>
-                  <small>Registered: {new Date(track.createdAt).toLocaleDateString()}</small>
+                  <p>
+                    <strong>Total Earnings:</strong> {track.totalEarnings} MATIC
+                  </p>
+                  <p>
+                    <strong>Revenues:</strong> {track.revenues.length} payments
+                  </p>
+                  <small>
+                    Registered: {new Date(track.createdAt).toLocaleDateString()}
+                  </small>
                 </div>
               ))
             )}
@@ -450,7 +563,7 @@ const Dashboard: React.FC = () => {
         <AnalyticsDashboard tracks={tracks} />
       )}
     </div>
-  )
-}
+  );
+};
 
-export default Dashboard
+export default Dashboard;
