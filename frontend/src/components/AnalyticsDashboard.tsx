@@ -365,7 +365,7 @@ const AnalyticsDashboard: React.FC<AnalyticsProps> = ({ tracks }) => {
             fontWeight: "bold",
           }}
         >
-          📊 Export to CSV
+          Export to CSV
         </button>
       </div>
 
@@ -383,31 +383,31 @@ const AnalyticsDashboard: React.FC<AnalyticsProps> = ({ tracks }) => {
             title: "Total Revenue",
             value: `${metrics.totalRevenue.toFixed(4)} MATIC`,
             color: "#4CAF50",
-            icon: "💰",
+            icon: "",
           },
           {
             title: "Total Tracks",
             value: metrics.totalTracks.toString(),
             color: "#2196F3",
-            icon: "🎵",
+            icon: "",
           },
           {
             title: "Avg per Track",
             value: `${metrics.avgRevenuePerTrack.toFixed(4)} MATIC`,
             color: "#FF9800",
-            icon: "📈",
+            icon: "",
           },
           {
             title: "Total Payments",
             value: metrics.totalPayments.toString(),
             color: "#9C27B0",
-            icon: "💳",
+            icon: "",
           },
           {
             title: "30-Day Growth",
             value: `${metrics.growthRate > 0 ? "+" : ""}${metrics.growthRate.toFixed(1)}%`,
             color: metrics.growthRate >= 0 ? "#4CAF50" : "#f44336",
-            icon: metrics.growthRate >= 0 ? "📈" : "📉",
+            icon: "",
           },
         ].map((metric, index) => (
           <div
@@ -455,7 +455,7 @@ const AnalyticsDashboard: React.FC<AnalyticsProps> = ({ tracks }) => {
               textAlign: "center",
             }}
           >
-            <div style={{ fontSize: "24px", marginBottom: "8px" }}>🏆</div>
+            <div style={{ fontSize: "24px", marginBottom: "8px" }}></div>
             <h4 style={{ margin: "0 0 8px 0", color: "#666", fontSize: "14px" }}>Best Day</h4>
             <p
               style={{
@@ -467,7 +467,7 @@ const AnalyticsDashboard: React.FC<AnalyticsProps> = ({ tracks }) => {
             >
               {bestPerformingDay.amount.toFixed(4)} MATIC
             </p>
-            <p style={{ fontSize: "12px", color: "#999", margin: 0 }}>{bestPerformingDay.date}</p>
+            <p style={{ fontSize: "12px", color: "#999", margin: 0 }}><span suppressHydrationWarning>{bestPerformingDay.date}</span></p>
           </div>
         )}
       </div>
@@ -503,7 +503,7 @@ const AnalyticsDashboard: React.FC<AnalyticsProps> = ({ tracks }) => {
             border: "2px dashed #ddd",
           }}
         >
-          <div style={{ fontSize: "48px", marginBottom: "16px" }}>🎵</div>
+          <div style={{ fontSize: "48px", marginBottom: "16px" }}></div>
           <h3>No Track Data Available</h3>
           <p>Register your first track and add some revenue to see analytics here!</p>
         </div>
@@ -741,7 +741,7 @@ const AnalyticsDashboard: React.FC<AnalyticsProps> = ({ tracks }) => {
                           textAlign: "center",
                         }}
                       >
-                        {new Date(track.createdAt).toLocaleDateString()}
+                        <span suppressHydrationWarning>{new Date(track.createdAt).toLocaleDateString()}</span>
                       </td>
                       <td
                         style={{

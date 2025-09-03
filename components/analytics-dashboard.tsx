@@ -244,7 +244,7 @@ export function AnalyticsDashboard({ tracks }: AnalyticsProps) {
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Best Day</p>
                   <p className="text-lg font-bold text-orange-600">{bestPerformingDay.amount.toFixed(4)} MATIC</p>
-                  <p className="text-xs text-muted-foreground">{bestPerformingDay.date}</p>
+                  <p className="text-xs text-muted-foreground"><span suppressHydrationWarning>{bestPerformingDay.date}</span></p>
                 </div>
               </div>
             </CardContent>
@@ -325,7 +325,7 @@ export function AnalyticsDashboard({ tracks }: AnalyticsProps) {
                         <td className="p-2 text-center">{track.revenues?.length || 0}</td>
                         <td className="p-2 text-right">{track.avgPerPayment.toFixed(6)} MATIC</td>
                         <td className="p-2 text-center">{track.lastPayment}</td>
-                        <td className="p-2 text-center">{new Date(track.createdAt).toLocaleDateString()}</td>
+                        <td className="p-2 text-center"><span suppressHydrationWarning>{new Date(track.createdAt).toLocaleDateString()}</span></td>
                         <td className="p-2 text-center">
                           <Badge variant={track.recentActivity > 0 ? "default" : "secondary"}>
                             {track.recentActivity}

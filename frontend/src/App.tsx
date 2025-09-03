@@ -112,7 +112,7 @@ function App() {
                   fontWeight: "bold",
                 }}
               >
-                🎵 MusicFlow
+                MusicFlow
               </h1>
               <p
                 style={{

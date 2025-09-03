@@ -11,8 +11,10 @@ import {
   useWaitForTransactionReceipt,
   useSwitchChain,
 } from "wagmi"
-import { parseEther, keccak256, toBytes, formatEther, parseGwei, isAddress } from "viem"
-import { polygon } from "wagmi/chains"
+import { readContract } from "@wagmi/core"
+  import { parseEther, keccak256, toBytes, formatEther, parseGwei, isAddress } from "viem"
+  import { polygonAmoy } from "wagmi/chains"
+  import { config } from "../config/wagmi"
 import { ROYALTY_DISTRIBUTOR_ADDRESS, ROYALTY_DISTRIBUTOR_ABI } from "../contracts/RoyaltyDistributor"
 import { trackAPI } from "../services/api"
 import AnalyticsDashboard from "./AnalyticsDashboard"
@@ -64,7 +66,7 @@ const Dashboard: React.FC = () => {
   const { connect, connectors, isPending: isConnecting } = useConnect()
   const { disconnect } = useDisconnect()
   const { switchChain } = useSwitchChain()
-  const { writeContract, isPending: isWritePending, error: writeError, data: hash } = useWriteContract()
+  const { writeContract, isPending: isWritePending, data: hash } = useWriteContract()
 
   // Transaction confirmation
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
@@ -98,8 +100,16 @@ const Dashboard: React.FC = () => {
   const validateRightHolders = useCallback((holders: RightHolder[]): string => {
     if (holders.length === 0) return "At least one right holder required"
 
-    const totalPercentage = holders.reduce((sum, h) => sum + (h.percentage || 0), 0)
-    if (totalPercentage !== 100) return `Percentages must sum to 100% (currently ${totalPercentage}%)`
+    // Use more precise calculation to handle floating point issues
+    const totalPercentage = holders.reduce((sum, h) => {
+      const percentage = h.percentage || 0
+      return sum + (Math.round(percentage * 100) / 100) // Round to 2 decimal places
+    }, 0)
+    
+    const roundedTotal = Math.round(totalPercentage * 100) / 100
+    if (Math.abs(roundedTotal - 100) > 0.01) {
+      return `Percentages must sum to 100% (currently ${roundedTotal}%)`
+    }
 
     const invalidAddress = holders.find((h) => !h.address || !isAddress(h.address))
     if (invalidAddress) return "All addresses must be valid Ethereum addresses"
@@ -108,6 +118,10 @@ const Dashboard: React.FC = () => {
       (h, index) => holders.findIndex((other) => other.address === h.address) !== index,
     )
     if (duplicateAddress) return "Duplicate addresses are not allowed"
+
+    // Check for invalid percentages
+    const invalidPercentage = holders.find((h) => h.percentage < 0 || h.percentage > 100)
+    if (invalidPercentage) return "Each percentage must be between 0 and 100"
 
     return ""
   }, [])
@@ -144,7 +158,7 @@ const Dashboard: React.FC = () => {
   }, [isConfirmed])
 
   // Network check
-  const isWrongNetwork = chain?.id !== polygon.id
+  const isWrongNetwork = chain?.id !== polygonAmoy.id
 
   // Data loading
   const loadTracks = async () => {
@@ -189,9 +203,42 @@ const Dashboard: React.FC = () => {
       setErrors((prev) => ({ ...prev, general: "" }))
       const trackId = keccak256(toBytes(trackName.trim()))
       const holders = rightHolders.map((h) => h.address as `0x${string}`)
-      const percentages = rightHolders.map((h) => BigInt(h.percentage * 100))
+      
+      // Convert percentages to basis points (multiply by 100) with proper rounding
+      const percentages = rightHolders.map((h) => {
+        const basisPoints = Math.round(h.percentage * 100)
+        return BigInt(basisPoints)
+      })
+
+      // Debug logging
+      console.log("Register Track Debug Info:")
+      console.log("Track Name:", trackName.trim())
+      console.log("Track ID:", trackId)
+      console.log("Right Holders:", rightHolders)
+      console.log("Holders (addresses):", holders)
+      console.log("Percentages (basis points):", percentages)
+      console.log("Total percentage:", percentages.reduce((sum, p) => sum + p, 0n))
+
+      // Validate that percentages sum to exactly 10000 (100.00%)
+      const totalBasisPoints = percentages.reduce((sum, p) => sum + p, 0n)
+      if (totalBasisPoints !== 10000n) {
+        throw new Error(`Percentages must sum to exactly 100%. Current total: ${Number(totalBasisPoints) / 100}%`)
+      }
+
+      // Check if track already exists by getting right holders
+      const existingTrack = await readContract(config, {
+        address: ROYALTY_DISTRIBUTOR_ADDRESS,
+        abi: ROYALTY_DISTRIBUTOR_ABI,
+        functionName: "getTrackRightHolders",
+        args: [trackId],
+      })
+
+      if (existingTrack && existingTrack[0].length > 0) { // Check if holders array has entries
+        throw new Error(`Track "${trackName.trim()}" already exists on the blockchain`)
+      }
 
       const gasConfig = getOptimizedGasConfig("registerTrack")
+      console.log("Gas config:", gasConfig)
 
       await writeContract({
         address: ROYALTY_DISTRIBUTOR_ADDRESS,
@@ -206,9 +253,23 @@ const Dashboard: React.FC = () => {
       setRightHolders([{ address, percentage: 100 }])
     } catch (err: any) {
       console.error("Register track error:", err)
+      let errorMessage = "Failed to register track"
+      
+      if (err?.message?.includes("Track already exists")) {
+        errorMessage = "This track name is already registered. Please choose a different name."
+      } else if (err?.message?.includes("Percentages must sum")) {
+        errorMessage = err.message
+      } else if (err?.message?.includes("Arrays length mismatch")) {
+        errorMessage = "Internal error: Right holders and percentages arrays don't match"
+      } else if (err?.shortMessage) {
+        errorMessage = err.shortMessage
+      } else if (err?.message) {
+        errorMessage = err.message
+      }
+      
       setErrors((prev) => ({
         ...prev,
-        general: err?.shortMessage || err?.message || "Failed to register track",
+        general: errorMessage,
       }))
     }
   }
@@ -306,9 +367,9 @@ const Dashboard: React.FC = () => {
           }}
         >
           <h3>Wrong Network</h3>
-          <p>Please switch to Polygon network to use this application.</p>
+          <p>Please switch to Polygon Amoy testnet to use this application.</p>
           <button
-            onClick={() => switchChain({ chainId: polygon.id })}
+            onClick={() => switchChain({ chainId: polygonAmoy.id })}
             style={{
               padding: "10px 20px",
               backgroundColor: "#ff6b6b",
@@ -317,7 +378,7 @@ const Dashboard: React.FC = () => {
               borderRadius: "4px",
             }}
           >
-            Switch to Polygon
+            Switch to Polygon Amoy Testnet
           </button>
         </div>
       )

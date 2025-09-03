@@ -11,7 +11,7 @@ import {
   useSwitchChain,
 } from "wagmi"
 import { parseEther, keccak256, toBytes, formatEther, parseGwei, isAddress } from "viem"
-import { polygon } from "wagmi/chains"
+import { polygonAmoy } from "wagmi/chains"
 import { ROYALTY_DISTRIBUTOR_ADDRESS, ROYALTY_DISTRIBUTOR_ABI } from "@/lib/contracts"
 import { trackAPI, type Track } from "@/lib/api"
 import { AnalyticsDashboard } from "@/components/analytics-dashboard"
@@ -29,26 +29,27 @@ interface RightHolder {
 }
 
 const getOptimizedGasConfig = (functionName: string) => {
+  // Optimized for Polygon Amoy testnet - lower gas prices and higher limits
   const baseConfigs = {
     registerTrack: {
-      gas: 400000n,
-      maxFeePerGas: parseGwei("50"),
-      maxPriorityFeePerGas: parseGwei("30"),
+      gas: 800000n, // Increased gas limit for complex contract interactions
+      maxFeePerGas: parseGwei("100"), // Higher gas price for testnet reliability
+      maxPriorityFeePerGas: parseGwei("50"),
     },
     addRevenue: {
-      gas: 300000n,
-      maxFeePerGas: parseGwei("45"),
-      maxPriorityFeePerGas: parseGwei("25"),
+      gas: 500000n,
+      maxFeePerGas: parseGwei("80"),
+      maxPriorityFeePerGas: parseGwei("40"),
     },
     withdraw: {
-      gas: 100000n,
-      maxFeePerGas: parseGwei("40"),
-      maxPriorityFeePerGas: parseGwei("20"),
+      gas: 200000n,
+      maxFeePerGas: parseGwei("60"),
+      maxPriorityFeePerGas: parseGwei("30"),
     },
     default: {
-      gas: 250000n,
-      maxFeePerGas: parseGwei("45"),
-      maxPriorityFeePerGas: parseGwei("25"),
+      gas: 500000n,
+      maxFeePerGas: parseGwei("80"),
+      maxPriorityFeePerGas: parseGwei("40"),
     },
   }
 
@@ -78,6 +79,12 @@ export function MusicFlowDashboard() {
     revenue: "",
     general: "",
   })
+  const [isClient, setIsClient] = useState(false)
+
+  // Fix hydration by ensuring client-side rendering
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   // Contract reads
   const { data: pendingBalance, refetch: refetchBalance } = useReadContract({
@@ -137,7 +144,7 @@ export function MusicFlowDashboard() {
     }
   }, [isConfirmed])
 
-  const isWrongNetwork = chain?.id !== polygon.id
+  const isWrongNetwork = chain?.id !== polygonAmoy.id
 
   const loadTracks = async () => {
     if (!address) return
@@ -177,11 +184,31 @@ export function MusicFlowDashboard() {
 
     try {
       setErrors((prev) => ({ ...prev, general: "" }))
+      
+      // Enhanced validation
       const trackId = keccak256(toBytes(trackName.trim()))
       const holders = rightHolders.map((h) => h.address as `0x${string}`)
-      const percentages = rightHolders.map((h) => BigInt(h.percentage * 100))
-
+      const percentages = rightHolders.map((h) => BigInt(Math.round(h.percentage * 100)))
+      
+      // Validate addresses
+      for (const holder of holders) {
+        if (!isAddress(holder)) {
+          throw new Error(`Invalid address: ${holder}`)
+        }
+      }
+      
+      // Validate percentages sum to exactly 10000 (100.00%)
+      const totalBasisPoints = percentages.reduce((sum, p) => sum + p, 0n)
+      if (totalBasisPoints !== 10000n) {
+        throw new Error(`Percentages must sum to exactly 100%. Current total: ${Number(totalBasisPoints) / 100}%`)
+      }
+      
+      // Check if track already exists
+      console.log("Checking if track exists...", trackId)
+      
       const gasConfig = getOptimizedGasConfig("registerTrack")
+      console.log("Gas config:", gasConfig)
+      console.log("Track registration params:", { trackId, holders, percentages })
 
       await writeContract({
         address: ROYALTY_DISTRIBUTOR_ADDRESS,
@@ -195,9 +222,27 @@ export function MusicFlowDashboard() {
       setRightHolders([{ address, percentage: 100 }])
     } catch (err: any) {
       console.error("Register track error:", err)
+      let errorMessage = "Failed to register track"
+      
+      if (err?.message?.includes("Track already exists")) {
+        errorMessage = "This track name is already registered. Please choose a different name."
+      } else if (err?.message?.includes("Percentages must sum")) {
+        errorMessage = err.message
+      } else if (err?.message?.includes("Invalid address")) {
+        errorMessage = err.message
+      } else if (err?.message?.includes("insufficient funds")) {
+        errorMessage = "Insufficient funds for gas fees. Please ensure you have enough POL tokens."
+      } else if (err?.message?.includes("gas")) {
+        errorMessage = "Transaction failed due to gas issues. Please try again with higher gas settings."
+      } else if (err?.shortMessage) {
+        errorMessage = err.shortMessage
+      } else if (err?.message) {
+        errorMessage = err.message
+      }
+      
       setErrors((prev) => ({
         ...prev,
-        general: err?.shortMessage || err?.message || "Failed to register track",
+        general: errorMessage,
       }))
     }
   }
@@ -251,6 +296,20 @@ export function MusicFlowDashboard() {
     }
   }
 
+  // Prevent hydration mismatch by showing loading state until client-side
+  if (!isClient) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle>Loading...</CardTitle>
+            <CardDescription>Initializing application</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    )
+  }
+
   if (!isConnected) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -282,11 +341,11 @@ export function MusicFlowDashboard() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <CardTitle>Wrong Network</CardTitle>
-            <CardDescription>Please switch to Polygon network to use this application.</CardDescription>
+            <CardDescription>Please switch to Polygon Amoy testnet to use this application.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => switchChain({ chainId: polygon.id })} className="w-full">
-              Switch to Polygon
+            <Button onClick={() => switchChain({ chainId: polygonAmoy.id })} className="w-full">
+              Switch to Polygon Amoy Testnet
             </Button>
           </CardContent>
         </Card>
@@ -507,7 +566,7 @@ export function MusicFlowDashboard() {
                                 <strong>Revenue Payments:</strong> {track.revenues.length}
                               </div>
                               <div>
-                                <strong>Registered:</strong> {new Date(track.createdAt).toLocaleDateString()}
+                                <strong>Registered:</strong> <span suppressHydrationWarning>{new Date(track.createdAt).toLocaleDateString()}</span>
                               </div>
                             </div>
                           </div>
