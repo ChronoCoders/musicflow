@@ -196,31 +196,31 @@ export function AnalyticsDashboard({ tracks }: AnalyticsProps) {
             title: "Total Revenue",
             value: `${metrics.totalRevenue.toFixed(4)} MATIC`,
             color: "text-green-600",
-            icon: "💰",
+            icon: "",
           },
           {
             title: "Total Tracks",
             value: metrics.totalTracks.toString(),
             color: "text-blue-600",
-            icon: "🎵",
+            icon: "",
           },
           {
             title: "Avg per Track",
             value: `${metrics.avgRevenuePerTrack.toFixed(4)} MATIC`,
             color: "text-orange-600",
-            icon: "📈",
+            icon: "",
           },
           {
             title: "Total Payments",
             value: metrics.totalPayments.toString(),
             color: "text-purple-600",
-            icon: "💳",
+            icon: "",
           },
           {
             title: "30-Day Growth",
             value: `${metrics.growthRate > 0 ? "+" : ""}${metrics.growthRate.toFixed(1)}%`,
             color: metrics.growthRate >= 0 ? "text-green-600" : "text-red-600",
-            icon: metrics.growthRate >= 0 ? "📈" : "📉",
+            icon: "",
           },
         ].map((metric, index) => (
           <Card key={index}>
@@ -240,7 +240,7 @@ export function AnalyticsDashboard({ tracks }: AnalyticsProps) {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center space-x-2">
-                <span className="text-2xl">🏆</span>
+                <span className="text-2xl"></span>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Best Day</p>
                   <p className="text-lg font-bold text-orange-600">{bestPerformingDay.amount.toFixed(4)} MATIC</p>
@@ -255,7 +255,7 @@ export function AnalyticsDashboard({ tracks }: AnalyticsProps) {
       {safeTracks.length === 0 ? (
         <Card>
           <CardContent className="p-12 text-center">
-            <div className="text-6xl mb-4">🎵</div>
+            <div className="text-6xl mb-4"></div>
             <h3 className="text-xl font-semibold mb-2">No Track Data Available</h3>
             <p className="text-muted-foreground">
               Register your first track and add some revenue to see analytics here!

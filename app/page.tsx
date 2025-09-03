@@ -10,7 +10,7 @@ export default function MusicFlowPage() {
         <header className="border-b bg-card">
           <div className="container mx-auto px-4 py-6">
             <div className="text-center">
-              <h1 className="text-4xl font-bold text-primary mb-2">🎵 MusicFlow</h1>
+              <h1 className="text-4xl font-bold text-primary mb-2">MusicFlow</h1>
               <p className="text-xl text-muted-foreground">Decentralized Music Royalty Distribution</p>
             </div>
           </div>

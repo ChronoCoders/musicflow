@@ -2,7 +2,7 @@
 
 A full-stack decentralized application for managing music royalty distribution on the Polygon blockchain.
 
-## 🎵 Features
+## Features
 
 - **Track Registration**: Register music tracks with blockchain verification
 - **Revenue Tracking**: Monitor earnings from multiple platforms
@@ -11,7 +11,7 @@ A full-stack decentralized application for managing music royalty distribution o
 - **Multi-Platform Support**: Track revenue from various streaming platforms
 - **Wallet Integration**: Connect with MetaMask and other Web3 wallets
 
-## 🏗️ Project Structure
+## Project Structure
 
 \`\`\`
 musicflow/
@@ -22,7 +22,7 @@ musicflow/
 └── README.md
 \`\`\`
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -77,7 +77,7 @@ VITE_ALCHEMY_API_KEY=your_alchemy_api_key_here
 VITE_API_BASE_URL=http://localhost:3001/api
 \`\`\`
 
-## 🔧 Development
+## Development
 
 ### Backend (Express + Prisma)
 \`\`\`bash
@@ -101,7 +101,7 @@ npm run test         # Run tests
 npm run deploy       # Deploy to network
 \`\`\`
 
-## 📊 Key Components
+## Key Components
 
 ### Backend API Endpoints
 - `GET /api/tracks/:walletAddress` - Get tracks for wallet
@@ -116,14 +116,14 @@ npm run deploy       # Deploy to network
 ### Smart Contract
 - **RoyaltyDistributor**: Handles on-chain royalty distribution
 
-## 🛠️ Technologies
+## Technologies
 
 - **Frontend**: React 18, TypeScript, Vite, Wagmi, Chart.js
 - **Backend**: Express.js, Prisma ORM, SQLite
 - **Blockchain**: Solidity, Hardhat, Polygon Network
 - **Styling**: CSS3, Responsive Design
 
-## 🔍 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -139,17 +139,17 @@ If you encounter build errors:
 2. Run `npm run install:all`
 3. Restart development servers
 
-## 📝 License
+## License
 
 MIT License - see LICENSE file for details.
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
 4. Submit a pull request
 
-## 📞 Support
+## Support
 
 For issues and questions, please open a GitHub issue or contact the development team.
