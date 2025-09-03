@@ -322,13 +322,7 @@ export function MusicFlowDashboard() {
             {connectors.map((connector) => (
               <Button
                 key={connector.uid}
-                onClick={(e) => {
-                  console.log('Button clicked:', connector.name, 'Event:', e)
-                  console.log('Connectors available:', connectors.length)
-                  e.preventDefault()
-                  e.stopPropagation()
-                  connect({ connector })
-                }}
+                onClick={() => connect({ connector })}
                 disabled={isConnecting}
                 className="w-full"
               >

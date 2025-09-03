@@ -4,7 +4,7 @@ import { WagmiProvider } from "wagmi"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { createConfig, http } from "wagmi"
 import { polygon, polygonAmoy } from "wagmi/chains"
-import { injected } from "@wagmi/connectors"
+import { injected } from "wagmi/connectors"
 import type { ReactNode } from "react"
 
 const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "demo"

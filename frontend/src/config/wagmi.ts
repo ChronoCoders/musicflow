@@ -1,6 +1,6 @@
 import { createConfig, http } from "wagmi"
 import { polygon, polygonAmoy } from "wagmi/chains"
-import { injected, metaMask } from "wagmi/connectors"
+import { injected } from "wagmi/connectors"
 
 // Use environment variables for API keys
 const ALCHEMY_API_KEY = import.meta.env.VITE_ALCHEMY_API_KEY || "EIYf5Nk7kP7QyWTCsU4IB"
@@ -10,7 +10,7 @@ const isDevelopment = import.meta.env.DEV
 
 export const config = createConfig({
   chains: isDevelopment ? [polygonAmoy, polygon] : [polygon],
-  connectors: [injected(), metaMask()],
+  connectors: [injected()],
   transports: {
     [polygon.id]: http(`https://polygon-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`),
     [polygonAmoy.id]: http(`https://polygon-amoy.g.alchemy.com/v2/${ALCHEMY_API_KEY}`),
@@ -18,8 +18,8 @@ export const config = createConfig({
   ssr: false,
 })
 
-declare module "wagmi" {
-  interface Register {
-    config: typeof config
-  }
-}
+// declare module "wagmi" {
+//   interface Register {
+//     config: typeof config
+//   }
+// }
